@@ -79,6 +79,7 @@ function M:_subscribe_events()
 	})
 	vim.api.nvim_create_autocmd({ "BufWinEnter" }, {
 		buffer = self.bufnr,
+		once = true,
 		callback = function()
 			self:_init()
 		end,
