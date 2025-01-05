@@ -3,23 +3,17 @@ local M = {}
 function M.setup(opts)
 	opts = opts or {}
 
-	_G.Floaterm = _G.Floaterm or require("floaterm.term").new() --[[@as Floaterm]]
+	if not _G.Floaterm then
+		_G.Floaterm = require("floaterm.term").new() --[[@as Floaterm]]
+	end
 end
 
-function M.toggle()
-	Floaterm:toggle()
-end
-
-function M.open(opts)
-	Floaterm:open(opts)
-end
-
-function M.next_session(cycle)
-	Floaterm:next_session(cycle)
-end
-
-function M.prev_session(cycle)
-	Floaterm:prev_session(cycle)
-end
+setmetatable(M, {
+	__index = function(_, key)
+		return function(...)
+			return Floaterm[key](Floaterm, ...)
+		end
+	end,
+})
 
 return M
