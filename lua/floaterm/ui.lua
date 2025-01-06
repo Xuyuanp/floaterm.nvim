@@ -12,38 +12,35 @@ function M.new(term_id)
 		_hidden = true,
 	}, { __index = M })
 
-	ui:_subscribe_events()
-
 	return ui
 end
 
----@private
-function M:_subscribe_events()
-	vim.api.nvim_create_autocmd("WinResized", {
-		callback = function()
-			if not self:is_valid() then
-				return
-			end
-			self:update()
-		end,
-	})
-end
-
-local function get_size()
+local function get_size(opts)
 	local win_width, win_height = vim.o.columns, vim.o.lines
 
-	local width = math.floor(win_width * 0.8)
-	local height = math.floor(win_height * 0.8)
+	local width = opts.width or 0.8
+	if width < 1 then
+		width = math.floor(win_width * width)
+	end
+	local height = opts.height or 0.8
+	if height < 1 then
+		height = math.floor(win_height * height)
+	end
+
 	local row = math.floor((win_height - height) / 2)
 	local col = math.floor((win_width - width) / 2)
 
 	return width, height, row, col
 end
 
+---@class FloatermWinConfig: vim.api.keyset.win_config
+---@field width number fixed width or percentage of the window
+---@field height number fixed width or percentage of the window
+
 ---@private
----@param opts? vim.api.keyset.win_config
+---@param opts FloatermWinConfig
 function M:get_config(opts)
-	local width, height, row, col = get_size()
+	local width, height, row, col = get_size(opts)
 
 	return vim.tbl_deep_extend("force", {
 		style = "minimal",
@@ -63,23 +60,24 @@ function M:bufnr()
 end
 
 ---@param bufnr number
----@param opts? vim.api.keyset.win_config
+---@param opts? FloatermWinConfig
 ---@param force? boolean
 function M:show(bufnr, opts, force)
 	if self._hidden and not force then
 		return
 	end
 
-	if not self._hidden and self:is_valid() then
+	self._hidden = false
+
+	local config = self:get_config(opts or {})
+	if self:is_valid() then
 		if bufnr ~= self:bufnr() then
 			vim.api.nvim_win_set_buf(self.winnr, bufnr)
 		end
-		self:update(opts)
-		self._hidden = false
+		vim.api.nvim_win_set_config(self.winnr, config)
 		return
 	end
 
-	local config = self:get_config(opts)
 	self.winnr = vim.api.nvim_open_win(bufnr, true, config)
 
 	vim.api.nvim_create_autocmd("WinClosed", {
@@ -89,8 +87,6 @@ function M:show(bufnr, opts, force)
 			self.win = nil
 		end,
 	})
-
-	self._hidden = false
 end
 
 ---@return boolean
@@ -110,12 +106,6 @@ function M:hide()
 
 	pcall(vim.api.nvim_win_hide, self.winnr)
 	self.winnr = nil
-end
-
----@param opts? vim.api.keyset.win_config
-function M:update(opts)
-	local config = self:get_config(opts)
-	vim.api.nvim_win_set_config(self.winnr, config)
 end
 
 return M
