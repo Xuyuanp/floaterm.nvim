@@ -158,9 +158,41 @@ function M:_current_session_id()
 end
 
 ---@private
-function M:_set_current(sid)
-	self.current_session = self.sessions[sid]
+function M:_set_current(session_id)
+	self.current_session = self.sessions[session_id]
 	self:update()
+end
+
+---@private
+---@param session_id SessionId
+---@param cycle? boolean
+---@param comp? fun(a: number, b: number): boolean
+---@return number?
+function M:_neighbor_session(session_id, cycle, comp)
+	comp = comp or function(a, b)
+		return a < b
+	end
+	local session_ids = vim.tbl_keys(self.sessions)
+	if #session_ids < 1 then
+		return
+	end
+	table.sort(session_ids, comp)
+
+	for _, sid in ipairs(session_ids) do
+		if sid ~= session_id and not comp(sid, session_id) then
+			return sid
+		end
+	end
+
+	if not cycle then
+		return
+	end
+
+	local first = session_ids[1]
+	if first == session_id then
+		return
+	end
+	return first
 end
 
 ---@private
@@ -168,26 +200,7 @@ end
 ---@param cycle? boolean
 ---@return number?
 function M:_next_session(session_id, cycle)
-	local session_ids = vim.tbl_keys(self.sessions)
-	if #session_ids < 1 then
-		return
-	end
-	table.sort(session_ids)
-	for _, sid in ipairs(session_ids) do
-		if sid > session_id then
-			return sid
-		end
-	end
-
-	if not cycle then
-		return
-	end
-
-	local first = session_ids[1]
-	if first == session_id then
-		return
-	end
-	return first
+	return self:_neighbor_session(session_id, cycle)
 end
 
 ---@private
@@ -195,29 +208,9 @@ end
 ---@param cycle? boolean
 ---@return number?
 function M:_prev_session(session_id, cycle)
-	local session_ids = vim.tbl_keys(self.sessions)
-	if #session_ids < 1 then
-		return
-	end
-	table.sort(session_ids, function(a, b)
+	return self:_neighbor_session(session_id, cycle, function(a, b)
 		return a > b
 	end)
-
-	for _, sid in ipairs(session_ids) do
-		if sid < session_id then
-			return sid
-		end
-	end
-
-	if not cycle then
-		return
-	end
-
-	local first = session_ids[1]
-	if first == session_id then
-		return
-	end
-	return first
 end
 
 ---@private
