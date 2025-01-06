@@ -72,8 +72,13 @@ function M:_subscribe_events()
 		nested = true,
 		callback = function()
 			vim.api.nvim_exec_autocmds("User", {
-				pattern = "FloatermSessionClose" .. self.term_id,
-				data = { id = self.id, bufnr = self.bufnr, code = self.code },
+				pattern = "FloatermSessionClose",
+				data = {
+					id = self.id,
+					term_id = self.term_id,
+					bufnr = self.bufnr,
+					code = self.code,
+				},
 			})
 		end,
 	})
@@ -102,8 +107,13 @@ function M:_on_exit(code)
 	self.code = code
 
 	vim.api.nvim_exec_autocmds("User", {
-		pattern = "FloatermSessionError" .. self.term_id,
-		data = { id = self.id, bufnr = self.bufnr, code = self.code },
+		pattern = "FloatermSessionError",
+		data = {
+			id = self.id,
+			term_id = self.term_id,
+			bufnr = self.bufnr,
+			code = self.code,
+		},
 	})
 end
 

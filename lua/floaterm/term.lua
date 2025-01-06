@@ -11,12 +11,10 @@ local UI = require("floaterm.ui")
 ---@field private _next_session_id SessionId
 local M = {}
 
-vim.g.next_floaterm_id = vim.g.next_floaterm_id or 1
-
 ---@return FloatermId
 local function gen_term_id()
-	local term_id = vim.g.next_floaterm_id
-	vim.g.next_floaterm_id = term_id + 1
+	local term_id = vim.g.floaterm_next_id or 1
+	vim.g.floaterm_next_id = term_id + 1
 	return term_id
 end
 
@@ -40,18 +38,32 @@ end
 ---@private
 function M:_subscribe_events()
 	vim.api.nvim_create_autocmd("User", {
-		pattern = "FloatermSessionClose" .. self.id,
+		pattern = "FloatermSessionClose",
 		callback = function(args)
+			if args.data.term_id ~= self.id then
+				return
+			end
 			local session_id = args.data.id
 			self:_on_session_closed(session_id)
 		end,
 	})
 	vim.api.nvim_create_autocmd("User", {
-		pattern = "FloatermSessionError" .. self.id,
+		pattern = "FloatermSessionError",
 		callback = function(args)
+			if args.data.term_id ~= self.id then
+				return
+			end
 			local session_id = args.data.id
 			local code = args.data.code
 			self:_on_session_error(session_id, code)
+		end,
+	})
+	vim.api.nvim_create_autocmd("WinResized", {
+		callback = function()
+			if self:hidden() then
+				return
+			end
+			self:update()
 		end,
 	})
 end
