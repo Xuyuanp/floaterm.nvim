@@ -1,11 +1,11 @@
----@class FloatermUI
----@field private term_id FloatermId
----@field private winnr? number
+---@class floaterm.UI
+---@field private term_id floaterm.terminal.Id
+---@field private winnr? integer
 ---@field private _hidden boolean
 local M = {}
 
----@param term_id FloatermId
----@return FloatermUI
+---@param term_id floaterm.terminal.Id
+---@return floaterm.UI
 function M.new(term_id)
 	local ui = setmetatable({
 		term_id = term_id,
@@ -33,34 +33,33 @@ local function get_size(opts)
 	return width, height, row, col
 end
 
----@class FloatermWinConfig: vim.api.keyset.win_config
----@field width number fixed width or percentage of the window
----@field height number fixed width or percentage of the window
+---@class floaterm.ui.WinConfig: vim.api.keyset.win_config
+---@field width? number fixed width or percentage of the window
+---@field height? number fixed width or percentage of the window
 
 ---@private
----@param opts FloatermWinConfig
+---@param opts floaterm.ui.WinConfig
 function M:get_config(opts)
 	local width, height, row, col = get_size(opts)
 
-	return vim.tbl_deep_extend("force", {
+	return vim.tbl_deep_extend("force", opts or {}, {
 		style = "minimal",
 		relative = "editor",
 		width = width,
 		height = height,
 		row = row,
 		col = col,
-		border = "rounded",
-	}, opts or {})
+	})
 end
 
 ---@private
----@return number?
+---@return integer?
 function M:bufnr()
 	return self.winnr and vim.api.nvim_win_get_buf(self.winnr)
 end
 
----@param bufnr number
----@param opts? FloatermWinConfig
+---@param bufnr integer
+---@param opts? floaterm.ui.WinConfig
 ---@param force? boolean
 function M:show(bufnr, opts, force)
 	if self._hidden and not force then

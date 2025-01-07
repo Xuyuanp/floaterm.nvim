@@ -1,28 +1,31 @@
 local Session = require("floaterm.session")
 local UI = require("floaterm.ui")
 
----@alias FloatermId number
+---@alias floaterm.terminal.Id integer
 
----@class Floaterm
----@field id FloatermId
----@field private ui FloatermUI
----@field private current_session? FloatermSession
----@field private sessions table<SessionId, FloatermSession>
----@field private _next_session_id SessionId
+---@class floaterm.Terminal
+---@field id floaterm.terminal.Id
+---@field private config floaterm.Config
+---@field private ui floaterm.UI
+---@field private current_session? floaterm.Session
+---@field private sessions table<floaterm.session.Id, floaterm.Session>
+---@field private _next_session_id floaterm.session.Id
 local M = {}
 
----@return FloatermId
+---@return floaterm.terminal.Id
 local function gen_term_id()
 	local term_id = vim.g.floaterm_next_id or 1
 	vim.g.floaterm_next_id = term_id + 1
 	return term_id
 end
 
----@return Floaterm
-function M.new()
+---@param config floaterm.Config
+---@return floaterm.Terminal
+function M.new(config)
 	local id = gen_term_id()
 	local term = setmetatable({
 		id = id,
+		config = config,
 		sessions = {},
 		ui = UI.new(id),
 		_next_session_id = 1,
@@ -69,7 +72,7 @@ function M:_subscribe_events()
 end
 
 ---@private
----@return SessionId
+---@return floaterm.session.Id
 function M:_new_session_id()
 	local sid = self._next_session_id
 	self._next_session_id = sid + 1
@@ -77,17 +80,19 @@ function M:_new_session_id()
 end
 
 ---@private
-function M:_create_session()
+---@param opts? floaterm.session.Opts
+function M:_create_session(opts)
 	local sid = self:_new_session_id()
-	local session = Session.new(sid, self.id)
+	local session = Session.new(sid, self.id, vim.tbl_deep_extend("force", self.config.session, opts or {}))
 	self.sessions[sid] = session
 	return session
 end
 
----@class FloatermOpenOpts
+---@class floaterm.terminal.OpenOpts
 ---@field force_new? boolean
+---@field session? floaterm.session.Opts
 
----@param opts? FloatermOpenOpts
+---@param opts? floaterm.terminal.OpenOpts
 function M:open(opts)
 	opts = opts or {}
 
@@ -98,20 +103,21 @@ function M:open(opts)
 	end
 
 	if not self.current_session or opts.force_new then
-		local new_session = self:_create_session()
+		local new_session = self:_create_session(opts.session)
 		self.current_session = new_session
 	end
 
 	self:update(true)
 end
 
--- refresh ui
+---refresh ui
 ---@param force_open? boolean open if hidden
 function M:update(force_open)
-	self.ui:show(self.current_session.bufnr, {
+	local opts = vim.tbl_deep_extend("force", self.config.ui.window, {
 		title = self:_format_sessions(),
 		title_pos = "center",
-	}, force_open)
+	})
+	self.ui:show(self.current_session.bufnr, opts, force_open)
 end
 
 ---@private
@@ -120,15 +126,15 @@ function M:_format_sessions()
 	table.sort(session_ids)
 	local icons = vim.iter(session_ids)
 		:map(function(sid)
-			local icon = self.current_session.id == sid and "●" or "○"
+			local icon = self.current_session.id == sid and self.config.ui.icons.active or self.config.ui.icons.inactive
 			local sess = self.sessions[sid]
-			if sess.code ~= nil and sess.code ~= 0 then
-				icon = "✗"
+			if sess.exit_code ~= nil and sess.exit_code ~= 0 then
+				icon = self.config.ui.icons.urgent
 			end
 			return icon
 		end)
 		:totable()
-	if #icons < 2 then
+	if #icons < 2 and self.config.ui.auto_hide_tabs then
 		return ""
 	end
 	local s = table.concat(icons, " ")
@@ -153,18 +159,20 @@ function M:toggle()
 end
 
 ---@private
+---@return floaterm.session.Id?
 function M:_current_session_id()
 	return self.current_session and self.current_session.id
 end
 
 ---@private
+---@param session_id floaterm.session.Id
 function M:_set_current(session_id)
 	self.current_session = self.sessions[session_id]
 	self:update()
 end
 
 ---@private
----@param session_id SessionId
+---@param session_id floaterm.session.Id
 ---@param cycle? boolean
 ---@param comp? fun(a: number, b: number): boolean
 ---@return number?
@@ -196,17 +204,17 @@ function M:_neighbor_session(session_id, cycle, comp)
 end
 
 ---@private
----@param session_id SessionId
+---@param session_id floaterm.session.Id
 ---@param cycle? boolean
----@return number?
+---@return floaterm.session.Id?
 function M:_next_session(session_id, cycle)
 	return self:_neighbor_session(session_id, cycle)
 end
 
 ---@private
----@param session_id SessionId
+---@param session_id floaterm.session.Id
 ---@param cycle? boolean
----@return number?
+---@return floaterm.session.Id?
 function M:_prev_session(session_id, cycle)
 	return self:_neighbor_session(session_id, cycle, function(a, b)
 		return a > b
@@ -214,25 +222,26 @@ function M:_prev_session(session_id, cycle)
 end
 
 ---@private
----@param session_id SessionId
----@param code number
-function M:_on_session_error(session_id, code)
+---@param session_id floaterm.session.Id
+---@param exit_code integer
+function M:_on_session_error(session_id, exit_code)
+	exit_code = exit_code -- lint
+
 	if not self.sessions[session_id] then
 		return
 	end
-	self.sessions[session_id].code = code
 
 	self:update()
 end
 
 ---@private
----@param session_id SessionId
+---@param session_id floaterm.session.Id
 function M:_fallback(session_id)
 	return self:_next_session(session_id, false) or self:_prev_session(session_id, false)
 end
 
 ---@private
----@param session_id SessionId
+---@param session_id floaterm.session.Id
 function M:_on_session_closed(session_id)
 	self.sessions[session_id] = nil
 
@@ -264,7 +273,11 @@ end
 
 ---@param cycle? boolean
 function M:next_session(cycle)
-	local sid = self:_next_session(self:_current_session_id(), cycle)
+	local current_session_id = self:_current_session_id()
+	if not current_session_id then
+		return
+	end
+	local sid = self:_next_session(current_session_id, cycle)
 	if not sid then
 		return
 	end
@@ -274,7 +287,11 @@ end
 
 ---@param cycle? boolean
 function M:prev_session(cycle)
-	local sid = self:_prev_session(self:_current_session_id(), cycle)
+	local current_session_id = self:_current_session_id()
+	if not current_session_id then
+		return
+	end
+	local sid = self:_prev_session(current_session_id, cycle)
 	if not sid then
 		return
 	end

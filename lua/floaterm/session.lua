@@ -1,22 +1,28 @@
----@alias SessionId number
+---@alias floaterm.session.Id integer
 
----@class FloatermSession
----@field id SessionId
----@field term_id FloatermId
----@field bufnr number
----@field code? number
+---@class floaterm.Session
+---@field id floaterm.session.Id
+---@field term_id floaterm.terminal.Id
+---@field bufnr integer
+---@field exit_code? integer
+---@field opts floaterm.session.Opts
 local M = {}
 
----@param id SessionId
----@param term_id FloatermId
----@return FloatermSession
-function M.new(id, term_id)
+---@class floaterm.session.Opts
+---@field cmd? string|string[]
+
+---@param id floaterm.session.Id
+---@param term_id floaterm.terminal.Id
+---@param opts? floaterm.session.Opts
+---@return floaterm.Session
+function M.new(id, term_id, opts)
 	local bufnr = vim.api.nvim_create_buf(false, true)
 
 	local sess = setmetatable({
 		id = id,
 		term_id = term_id,
 		bufnr = bufnr,
+		opts = opts or {},
 	}, { __index = M })
 
 	sess:_subscribe_events()
@@ -46,7 +52,7 @@ function M:_init()
 	if vim.bo.buftype == "terminal" then
 		return
 	end
-	local job_id = vim.fn.jobstart({ vim.o.shell }, {
+	local job_id = vim.fn.jobstart(self.opts.cmd or { vim.o.shell }, {
 		term = true,
 		env = {
 			TERM = vim.env.TERM,
@@ -77,7 +83,7 @@ function M:_subscribe_events()
 					id = self.id,
 					term_id = self.term_id,
 					bufnr = self.bufnr,
-					code = self.code,
+					code = self.exit_code,
 				},
 			})
 		end,
@@ -98,13 +104,13 @@ function M:_subscribe_events()
 end
 
 ---@private
----@param code number
+---@param code integer
 function M:_on_exit(code)
 	if not self:is_valid() then
 		return
 	end
 
-	self.code = code
+	self.exit_code = code
 
 	vim.api.nvim_exec_autocmds("User", {
 		pattern = "FloatermSessionError",
@@ -112,7 +118,7 @@ function M:_on_exit(code)
 			id = self.id,
 			term_id = self.term_id,
 			bufnr = self.bufnr,
-			code = self.code,
+			exit_code = self.exit_code,
 		},
 	})
 end
