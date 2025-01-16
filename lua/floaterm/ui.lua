@@ -2,17 +2,16 @@
 ---@field private term_id floaterm.terminal.Id
 ---@field private winnr? integer
 ---@field private _hidden boolean
-local M = {}
+local UI = {}
+UI.__index = UI
 
----@param term_id floaterm.terminal.Id
 ---@return floaterm.UI
-function M.new(term_id)
-	local ui = setmetatable({
-		term_id = term_id,
+function UI.new()
+	local self = setmetatable({
 		_hidden = true,
-	}, { __index = M })
+	}, UI)
 
-	return ui
+	return self
 end
 
 local function get_size(opts)
@@ -39,7 +38,7 @@ end
 
 ---@private
 ---@param opts floaterm.ui.WinConfig
-function M:get_config(opts)
+function UI:get_config(opts)
 	local width, height, row, col = get_size(opts)
 
 	return vim.tbl_deep_extend("force", opts or {}, {
@@ -54,14 +53,14 @@ end
 
 ---@private
 ---@return integer?
-function M:bufnr()
+function UI:bufnr()
 	return self.winnr and vim.api.nvim_win_get_buf(self.winnr)
 end
 
 ---@param bufnr integer
 ---@param opts? floaterm.ui.WinConfig
 ---@param force? boolean
-function M:show(bufnr, opts, force)
+function UI:show(bufnr, opts, force)
 	if self._hidden and not force then
 		return
 	end
@@ -83,21 +82,21 @@ function M:show(bufnr, opts, force)
 		pattern = "" .. self.winnr,
 		once = true,
 		callback = function()
-			self.win = nil
+			self.winnr = nil
 		end,
 	})
 end
 
 ---@return boolean
-function M:hidden()
+function UI:hidden()
 	return self._hidden
 end
 
-function M:is_valid()
+function UI:is_valid()
 	return self.winnr and vim.api.nvim_win_is_valid(self.winnr)
 end
 
-function M:hide()
+function UI:hide()
 	if self._hidden then
 		return
 	end
@@ -107,4 +106,11 @@ function M:hide()
 	self.winnr = nil
 end
 
-return M
+---@type floaterm.UI
+---@overload fun(): floaterm.UI
+local cls = setmetatable(UI, {
+	__call = function(_)
+		return UI.new()
+	end,
+})
+return cls

@@ -6,7 +6,8 @@
 ---@field bufnr integer
 ---@field exit_code? integer
 ---@field opts floaterm.session.Opts
-local M = {}
+local Session = {}
+Session.__index = Session
 
 ---@class floaterm.session.Opts
 ---@field cmd? string|string[]
@@ -15,40 +16,40 @@ local M = {}
 ---@param term_id floaterm.terminal.Id
 ---@param opts? floaterm.session.Opts
 ---@return floaterm.Session
-function M.new(id, term_id, opts)
+function Session.new(id, term_id, opts)
 	local bufnr = vim.api.nvim_create_buf(false, true)
 
-	local sess = setmetatable({
+	local self = setmetatable({
 		id = id,
 		term_id = term_id,
 		bufnr = bufnr,
 		opts = opts or {},
-	}, { __index = M })
+	}, Session)
 
-	sess:_subscribe_events()
+	self:_subscribe_events()
 
-	return sess
+	return self
 end
 
 ---@private
 ---@param fn fun()
-function M:call(fn)
+function Session:call(fn)
 	vim.api.nvim_buf_call(self.bufnr, fn)
 end
 
-function M:prompt()
+function Session:prompt()
 	self:call(function()
 		self:_prompt()
 	end)
 end
 
 ---@private
-function M:_prompt()
+function Session:_prompt()
 	vim.cmd.startinsert()
 end
 
 ---@private
-function M:_init()
+function Session:_init()
 	if vim.bo.buftype == "terminal" then
 		return
 	end
@@ -69,7 +70,7 @@ function M:_init()
 end
 
 ---@private
-function M:_subscribe_events()
+function Session:_subscribe_events()
 	-- timeline:
 	-- when the job exit successfully, the terminal buffer will be wiped out firstly, then on_exit will be called
 	-- otherwise, on_exit is called firstly and prompt user to the close buffer
@@ -105,7 +106,7 @@ end
 
 ---@private
 ---@param code integer
-function M:_on_exit(code)
+function Session:_on_exit(code)
 	if not self:is_valid() then
 		return
 	end
@@ -124,8 +125,15 @@ function M:_on_exit(code)
 end
 
 ---@return boolean
-function M:is_valid()
+function Session:is_valid()
 	return self.bufnr and vim.api.nvim_buf_is_valid(self.bufnr)
 end
 
-return M
+---@class floaterm.Session
+---@overload fun(id: floaterm.session.Id, term_id: floaterm.terminal.Id, opts?: floaterm.session.Opts): floaterm.Session
+local cls = setmetatable(Session, {
+	__call = function(_, ...)
+		return Session.new(...)
+	end,
+})
+return cls

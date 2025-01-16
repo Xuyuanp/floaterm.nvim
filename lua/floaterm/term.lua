@@ -10,7 +10,8 @@ local UI = require("floaterm.ui")
 ---@field private current_session? floaterm.Session
 ---@field private sessions table<floaterm.session.Id, floaterm.Session>
 ---@field private _next_session_id floaterm.session.Id
-local M = {}
+local Terminal = {}
+Terminal.__index = Terminal
 
 ---@return floaterm.terminal.Id
 local function gen_term_id()
@@ -21,25 +22,23 @@ end
 
 ---@param config floaterm.Config
 ---@return floaterm.Terminal
-function M.new(config)
+function Terminal.new(config)
 	local id = gen_term_id()
-	local term = setmetatable({
+	local self = setmetatable({
 		id = id,
 		config = config,
 		sessions = {},
-		ui = UI.new(id),
+		ui = UI(),
 		_next_session_id = 1,
-	}, {
-		__index = M,
-	})
+	}, Terminal)
 
-	term:_subscribe_events()
+	self:_subscribe_events()
 
-	return term
+	return self
 end
 
 ---@private
-function M:_subscribe_events()
+function Terminal:_subscribe_events()
 	vim.api.nvim_create_autocmd("User", {
 		pattern = "FloatermSessionClose",
 		callback = function(args)
@@ -73,7 +72,7 @@ end
 
 ---@private
 ---@return floaterm.session.Id
-function M:_new_session_id()
+function Terminal:_new_session_id()
 	local sid = self._next_session_id
 	self._next_session_id = sid + 1
 	return sid
@@ -81,9 +80,9 @@ end
 
 ---@private
 ---@param opts? floaterm.session.Opts
-function M:_create_session(opts)
+function Terminal:_create_session(opts)
 	local sid = self:_new_session_id()
-	local session = Session.new(sid, self.id, vim.tbl_deep_extend("force", self.config.session, opts or {}))
+	local session = Session(sid, self.id, vim.tbl_deep_extend("force", self.config.session, opts or {}))
 	self.sessions[sid] = session
 	return session
 end
@@ -93,7 +92,7 @@ end
 ---@field session? floaterm.session.Opts
 
 ---@param opts? floaterm.terminal.OpenOpts
-function M:open(opts)
+function Terminal:open(opts)
 	opts = opts or {}
 
 	-- cleanup invalid session
@@ -112,7 +111,7 @@ end
 
 ---refresh ui
 ---@param force_open? boolean open if hidden
-function M:update(force_open)
+function Terminal:update(force_open)
 	local opts = vim.tbl_deep_extend("force", self.config.ui.window, {
 		title = self:_format_sessions(),
 		title_pos = "center",
@@ -121,7 +120,7 @@ function M:update(force_open)
 end
 
 ---@private
-function M:_format_sessions()
+function Terminal:_format_sessions()
 	local session_ids = vim.tbl_keys(self.sessions)
 	table.sort(session_ids)
 	local icons = vim.iter(session_ids)
@@ -142,15 +141,15 @@ function M:_format_sessions()
 	return string.format(" %s ", s)
 end
 
-function M:hidden()
+function Terminal:hidden()
 	return self.ui:hidden() or not self.ui:is_valid()
 end
 
-function M:hide()
+function Terminal:hide()
 	self.ui:hide()
 end
 
-function M:toggle()
+function Terminal:toggle()
 	if self:hidden() then
 		self:open()
 	else
@@ -160,13 +159,13 @@ end
 
 ---@private
 ---@return floaterm.session.Id?
-function M:_current_session_id()
+function Terminal:_current_session_id()
 	return self.current_session and self.current_session.id
 end
 
 ---@private
 ---@param session_id floaterm.session.Id
-function M:_set_current(session_id)
+function Terminal:_set_current(session_id)
 	self.current_session = self.sessions[session_id]
 	self:update()
 end
@@ -176,7 +175,7 @@ end
 ---@param cycle? boolean
 ---@param comp? fun(a: number, b: number): boolean
 ---@return number?
-function M:_neighbor_session(session_id, cycle, comp)
+function Terminal:_neighbor_session(session_id, cycle, comp)
 	comp = comp or function(a, b)
 		return a < b
 	end
@@ -207,7 +206,7 @@ end
 ---@param session_id floaterm.session.Id
 ---@param cycle? boolean
 ---@return floaterm.session.Id?
-function M:_next_session(session_id, cycle)
+function Terminal:_next_session(session_id, cycle)
 	return self:_neighbor_session(session_id, cycle)
 end
 
@@ -215,7 +214,7 @@ end
 ---@param session_id floaterm.session.Id
 ---@param cycle? boolean
 ---@return floaterm.session.Id?
-function M:_prev_session(session_id, cycle)
+function Terminal:_prev_session(session_id, cycle)
 	return self:_neighbor_session(session_id, cycle, function(a, b)
 		return a > b
 	end)
@@ -224,7 +223,7 @@ end
 ---@private
 ---@param session_id floaterm.session.Id
 ---@param exit_code integer
-function M:_on_session_error(session_id, exit_code)
+function Terminal:_on_session_error(session_id, exit_code)
 	exit_code = exit_code -- lint
 
 	if not self.sessions[session_id] then
@@ -236,13 +235,13 @@ end
 
 ---@private
 ---@param session_id floaterm.session.Id
-function M:_fallback(session_id)
+function Terminal:_fallback(session_id)
 	return self:_next_session(session_id, false) or self:_prev_session(session_id, false)
 end
 
 ---@private
 ---@param session_id floaterm.session.Id
-function M:_on_session_closed(session_id)
+function Terminal:_on_session_closed(session_id)
 	self.sessions[session_id] = nil
 
 	-- other session closed, just remove it and update ui if needed
@@ -272,7 +271,7 @@ function M:_on_session_closed(session_id)
 end
 
 ---@param cycle? boolean
-function M:next_session(cycle)
+function Terminal:next_session(cycle)
 	local current_session_id = self:_current_session_id()
 	if not current_session_id then
 		return
@@ -286,7 +285,7 @@ function M:next_session(cycle)
 end
 
 ---@param cycle? boolean
-function M:prev_session(cycle)
+function Terminal:prev_session(cycle)
 	local current_session_id = self:_current_session_id()
 	if not current_session_id then
 		return
@@ -299,4 +298,11 @@ function M:prev_session(cycle)
 	self:_set_current(sid)
 end
 
-return M
+---@type floaterm.Terminal
+---@overload fun(config: floaterm.Config): floaterm.Terminal
+local cls = setmetatable(Terminal, {
+	__call = function(_, ...)
+		return Terminal.new(...)
+	end,
+})
+return cls
