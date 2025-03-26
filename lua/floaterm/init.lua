@@ -5,6 +5,7 @@ local default = {
 	session = {},
 	ui = {
 		auto_hide_tabs = true,
+		title_pos = "center", -- "center" | "left" | "right"
 		icons = {
 			active = "",
 			inactive = "",
@@ -21,6 +22,11 @@ local default = {
 function M.setup(opts)
 	opts = opts or {}
 	M.global = vim.tbl_deep_extend("force", vim.deepcopy(default), opts)
+
+	vim.api.nvim_set_hl(0, "FloatermIconActive", { link = "FloatTitle", default = true })
+	vim.api.nvim_set_hl(0, "FloatermIconInactive", { link = "FloatBorder", default = true })
+	-- maybe Error or DiagnosticError is better, but NormalFloat is good enough
+	vim.api.nvim_set_hl(0, "FloatermIconUrgent", { link = "NormalFloat", default = true })
 end
 
 setmetatable(M, {

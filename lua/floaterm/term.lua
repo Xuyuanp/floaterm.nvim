@@ -114,7 +114,7 @@ end
 function Terminal:update(force_open)
 	local opts = vim.tbl_deep_extend("force", self.config.ui.window, {
 		title = self:_format_sessions(),
-		title_pos = "center",
+		title_pos = self.config.ui.title_pos,
 	})
 	self.ui:show(self.current_session.bufnr, opts, force_open)
 end
@@ -125,20 +125,25 @@ function Terminal:_format_sessions()
 	table.sort(session_ids)
 	local icons = vim.iter(session_ids)
 		:map(function(sid)
-			local icon = self.current_session.id == sid and self.config.ui.icons.active or self.config.ui.icons.inactive
+			local highlight = "FloatermIconInactive"
+			local icon = self.config.ui.icons.inactive
+			if self.current_session.id == sid then
+				icon = self.config.ui.icons.active
+				highlight = "FloatermIconActive"
+			end
 			local sess = self.sessions[sid]
 			if sess.exit_code ~= nil and sess.exit_code ~= 0 then
 				icon = self.config.ui.icons.urgent
+				highlight = "FloatermIconUrgent"
 			end
-			return icon
+			return { " " .. icon, highlight }
 		end)
 		:totable()
 	if #icons < 2 and self.config.ui.auto_hide_tabs then
 		return ""
 	end
-	local s = table.concat(icons, " ")
-
-	return string.format(" %s ", s)
+	table.insert(icons, { " " })
+	return icons
 end
 
 function Terminal:hidden()
