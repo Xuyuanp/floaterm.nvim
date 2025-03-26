@@ -57,6 +57,7 @@ function Session:_init()
 		term = true,
 		env = {
 			TERM = vim.env.TERM,
+			NVIM_FLOATERM = "1",
 		},
 		on_exit = function(_, code)
 			self:_on_exit(code)
