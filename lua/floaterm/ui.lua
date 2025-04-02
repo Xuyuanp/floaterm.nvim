@@ -41,6 +41,15 @@ end
 function UI:get_config(opts)
 	local width, height, row, col = get_size(opts)
 
+	local border = opts.border or vim.o.winborder
+	if
+		border == ""
+		or border == "none"
+		or border == "shadow" -- shadow is not supported
+	then
+		border = "rounded"
+	end
+
 	return vim.tbl_deep_extend("force", opts or {}, {
 		style = "minimal",
 		relative = "editor",
@@ -48,6 +57,7 @@ function UI:get_config(opts)
 		height = height,
 		row = row,
 		col = col,
+		border = border,
 	})
 end
 

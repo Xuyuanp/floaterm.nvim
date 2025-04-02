@@ -14,7 +14,7 @@ local default = {
 		window = {
 			width = 0.8,
 			height = 0.8,
-			border = "rounded",
+			border = nil, -- use winborder by default, if winborder is empty, 'none' or 'shadow', use 'rounded'
 		},
 	},
 }
