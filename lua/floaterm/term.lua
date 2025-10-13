@@ -121,7 +121,7 @@ end
 
 ---@private
 function Terminal:_format_sessions()
-	local session_ids = vim.tbl_keys(self.sessions)
+	local session_ids = self:list_sessions_ids()
 	table.sort(session_ids)
 	local icons = vim.iter(session_ids)
 		:map(function(sid)
@@ -162,10 +162,14 @@ function Terminal:toggle()
 	end
 end
 
----@private
 ---@return floaterm.session.Id?
-function Terminal:_current_session_id()
+function Terminal:current_session_id()
 	return self.current_session and self.current_session.id
+end
+
+---@return floaterm.session.Id[]
+function Terminal:list_sessions_ids()
+	return vim.tbl_keys(self.sessions)
 end
 
 ---@private
@@ -184,7 +188,7 @@ function Terminal:_neighbor_session(session_id, cycle, comp)
 	comp = comp or function(a, b)
 		return a < b
 	end
-	local session_ids = vim.tbl_keys(self.sessions)
+	local session_ids = self:list_sessions_ids()
 	if #session_ids < 1 then
 		return
 	end
@@ -277,7 +281,7 @@ end
 
 ---@param cycle? boolean
 function Terminal:next_session(cycle)
-	local current_session_id = self:_current_session_id()
+	local current_session_id = self:current_session_id()
 	if not current_session_id then
 		return
 	end
@@ -291,7 +295,7 @@ end
 
 ---@param cycle? boolean
 function Terminal:prev_session(cycle)
-	local current_session_id = self:_current_session_id()
+	local current_session_id = self:current_session_id()
 	if not current_session_id then
 		return
 	end
