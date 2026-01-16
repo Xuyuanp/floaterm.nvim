@@ -102,8 +102,9 @@ function UI:hidden()
 	return self._hidden
 end
 
+---@return boolean
 function UI:is_valid()
-	return self.winnr and vim.api.nvim_win_is_valid(self.winnr)
+	return self.winnr ~= nil and vim.api.nvim_win_is_valid(self.winnr)
 end
 
 function UI:hide()

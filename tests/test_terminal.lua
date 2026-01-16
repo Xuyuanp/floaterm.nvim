@@ -1,0 +1,353 @@
+local new_set = MiniTest.new_set
+local expect, eq = MiniTest.expect, MiniTest.expect.equality
+
+local T = new_set()
+
+-- Helper to create a minimal config
+local function make_config()
+	return {
+		session = {},
+		ui = {
+			auto_hide_tabs = true,
+			title_pos = "center",
+			icons = {
+				active = "",
+				inactive = "",
+				urgent = "󰐾",
+			},
+			window = {
+				width = 0.8,
+				height = 0.8,
+				border = nil,
+			},
+		},
+	}
+end
+
+-- Helper to cleanup terminal and its sessions
+local function cleanup_term(term)
+	term:hide()
+	for _, sid in ipairs(term:list_sessions_ids()) do
+		local session = term.sessions[sid]
+		if session and session:is_valid() then
+			vim.api.nvim_buf_delete(session.bufnr, { force = true })
+		end
+	end
+end
+
+-- =============================================================================
+-- Terminal.new()
+-- =============================================================================
+
+T["Terminal.new()"] = new_set()
+
+T["Terminal.new()"]["creates terminal with unique id"] = function()
+	-- Reset the global counter for predictable tests
+	vim.g.floaterm_next_id = 1
+
+	local Terminal = require("floaterm.term")
+	local term1 = Terminal.new(make_config())
+	local term2 = Terminal.new(make_config())
+
+	eq(type(term1.id), "number")
+	eq(type(term2.id), "number")
+	expect.no_equality(term1.id, term2.id)
+
+	-- Cleanup
+	term1:hide()
+	term2:hide()
+end
+
+T["Terminal.new()"]["creates terminal via call syntax"] = function()
+	local Terminal = require("floaterm.term")
+	local term = Terminal(make_config())
+
+	eq(type(term.id), "number")
+
+	-- Cleanup
+	term:hide()
+end
+
+T["Terminal.new()"]["initializes with empty sessions"] = function()
+	local Terminal = require("floaterm.term")
+	local term = Terminal(make_config())
+
+	local session_ids = term:list_sessions_ids()
+	eq(#session_ids, 0)
+
+	-- Cleanup
+	term:hide()
+end
+
+-- =============================================================================
+-- Terminal:list_sessions_ids()
+-- =============================================================================
+
+T["list_sessions_ids()"] = new_set()
+
+T["list_sessions_ids()"]["returns empty table initially"] = function()
+	local Terminal = require("floaterm.term")
+	local term = Terminal(make_config())
+
+	local ids = term:list_sessions_ids()
+	eq(type(ids), "table")
+	eq(#ids, 0)
+
+	-- Cleanup
+	term:hide()
+end
+
+-- =============================================================================
+-- Terminal:current_session_id()
+-- =============================================================================
+
+T["current_session_id()"] = new_set()
+
+T["current_session_id()"]["returns nil when no session exists"] = function()
+	local Terminal = require("floaterm.term")
+	local term = Terminal(make_config())
+
+	eq(term:current_session_id(), nil)
+
+	-- Cleanup
+	term:hide()
+end
+
+-- =============================================================================
+-- Terminal:hidden()
+-- =============================================================================
+
+T["hidden()"] = new_set()
+
+T["hidden()"]["returns true initially"] = function()
+	local Terminal = require("floaterm.term")
+	local term = Terminal(make_config())
+
+	eq(term:hidden(), true)
+
+	-- Cleanup
+	term:hide()
+end
+
+-- =============================================================================
+-- Terminal:toggle()
+-- =============================================================================
+
+T["toggle()"] = new_set()
+
+T["toggle()"]["opens terminal when hidden"] = function()
+	local Terminal = require("floaterm.term")
+	local term = Terminal(make_config())
+
+	eq(term:hidden(), true)
+
+	term:toggle()
+
+	eq(term:hidden(), false)
+
+	cleanup_term(term)
+end
+
+T["toggle()"]["hides terminal when visible"] = function()
+	local Terminal = require("floaterm.term")
+	local term = Terminal(make_config())
+
+	term:toggle()
+	eq(term:hidden(), false)
+
+	term:toggle()
+	eq(term:hidden(), true)
+
+	cleanup_term(term)
+end
+
+-- =============================================================================
+-- Terminal:_format_sessions()
+-- =============================================================================
+
+T["_format_sessions()"] = new_set()
+
+T["_format_sessions()"]["returns empty string with single session and auto_hide_tabs"] = function()
+	local Terminal = require("floaterm.term")
+	local config = make_config()
+	config.ui.auto_hide_tabs = true
+	local term = Terminal(config)
+
+	-- Open to create a session
+	term:open()
+
+	local formatted = term:_format_sessions()
+	eq(formatted, "")
+
+	cleanup_term(term)
+end
+
+T["_format_sessions()"]["returns icons with auto_hide_tabs disabled"] = function()
+	local Terminal = require("floaterm.term")
+	local config = make_config()
+	config.ui.auto_hide_tabs = false
+	local term = Terminal(config)
+
+	-- Open to create a session
+	term:open()
+
+	local formatted = term:_format_sessions()
+	eq(type(formatted), "table")
+	expect.equality(#formatted > 0, true)
+
+	cleanup_term(term)
+end
+
+-- =============================================================================
+-- Terminal:open()
+-- =============================================================================
+
+T["open()"] = new_set()
+
+T["open()"]["creates new session"] = function()
+	local Terminal = require("floaterm.term")
+	local term = Terminal(make_config())
+
+	eq(#term:list_sessions_ids(), 0)
+
+	term:open()
+
+	eq(#term:list_sessions_ids(), 1)
+	expect.no_equality(term:current_session_id(), nil)
+
+	cleanup_term(term)
+end
+
+T["open()"]["reuses existing session by default"] = function()
+	local Terminal = require("floaterm.term")
+	local term = Terminal(make_config())
+
+	term:open()
+	local first_id = term:current_session_id()
+
+	term:hide()
+	term:open()
+	local second_id = term:current_session_id()
+
+	eq(first_id, second_id)
+	eq(#term:list_sessions_ids(), 1)
+
+	cleanup_term(term)
+end
+
+T["open()"]["creates new session when force_new is true"] = function()
+	local Terminal = require("floaterm.term")
+	local term = Terminal(make_config())
+
+	term:open()
+	local first_id = term:current_session_id()
+
+	term:open({ force_new = true })
+	local second_id = term:current_session_id()
+
+	expect.no_equality(first_id, second_id)
+	eq(#term:list_sessions_ids(), 2)
+
+	cleanup_term(term)
+end
+
+T["open()"]["reuses named session if exists"] = function()
+	local Terminal = require("floaterm.term")
+	local term = Terminal(make_config())
+
+	term:open({ session = { name = "test-session" } })
+	local first_id = term:current_session_id()
+
+	term:open({ force_new = true })
+	local second_id = term:current_session_id()
+
+	term:open({ session = { name = "test-session" } })
+	local third_id = term:current_session_id()
+
+	-- third_id should be same as first_id (named session)
+	eq(first_id, third_id)
+	expect.no_equality(first_id, second_id)
+	eq(#term:list_sessions_ids(), 2)
+
+	cleanup_term(term)
+end
+
+-- =============================================================================
+-- Terminal:_neighbor_session()
+-- =============================================================================
+
+T["_neighbor_session()"] = new_set()
+
+T["_neighbor_session()"]["finds next session"] = function()
+	local Terminal = require("floaterm.term")
+	local term = Terminal(make_config())
+
+	term:open()
+	local id1 = term:current_session_id()
+	term:open({ force_new = true })
+	local id2 = term:current_session_id()
+	term:open({ force_new = true })
+	local id3 = term:current_session_id()
+
+	-- From id1, next should be id2
+	local next_from_1 = term:_next_session(id1, false)
+	eq(next_from_1, id2)
+
+	-- From id2, next should be id3
+	local next_from_2 = term:_next_session(id2, false)
+	eq(next_from_2, id3)
+
+	-- From id3, next should be nil (no cycle)
+	local next_from_3 = term:_next_session(id3, false)
+	eq(next_from_3, nil)
+
+	cleanup_term(term)
+end
+
+T["_neighbor_session()"]["finds prev session"] = function()
+	local Terminal = require("floaterm.term")
+	local term = Terminal(make_config())
+
+	term:open()
+	local id1 = term:current_session_id()
+	term:open({ force_new = true })
+	local id2 = term:current_session_id()
+	term:open({ force_new = true })
+	local id3 = term:current_session_id()
+
+	-- From id3, prev should be id2
+	local prev_from_3 = term:_prev_session(id3, false)
+	eq(prev_from_3, id2)
+
+	-- From id2, prev should be id1
+	local prev_from_2 = term:_prev_session(id2, false)
+	eq(prev_from_2, id1)
+
+	-- From id1, prev should be nil (no cycle)
+	local prev_from_1 = term:_prev_session(id1, false)
+	eq(prev_from_1, nil)
+
+	cleanup_term(term)
+end
+
+T["_neighbor_session()"]["cycles when cycle=true"] = function()
+	local Terminal = require("floaterm.term")
+	local term = Terminal(make_config())
+
+	term:open()
+	local id1 = term:current_session_id()
+	term:open({ force_new = true })
+	local id2 = term:current_session_id()
+
+	-- From id2, next with cycle should be id1
+	local next_from_2 = term:_next_session(id2, true)
+	eq(next_from_2, id1)
+
+	-- From id1, prev with cycle should be id2
+	local prev_from_1 = term:_prev_session(id1, true)
+	eq(prev_from_1, id2)
+
+	cleanup_term(term)
+end
+
+return T
