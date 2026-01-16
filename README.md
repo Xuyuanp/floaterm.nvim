@@ -4,11 +4,14 @@ Floaterm.nvim is a Neovim plugin that provides a floating terminal with multi-ta
 
 ![image](https://github.com/user-attachments/assets/2264e2e8-ea56-4a5b-a5ed-02a0a741f50c)
 
-
 ## Features
 
 - **Floating Terminal**: Open a terminal in a floating window for seamless integration with your Neovim workflow.
 - **Multi-Tab Support**: Manage multiple terminal sessions using tabs, with customizable UI options.
+
+## Requirements
+
+- Neovim >= 0.10.0
 
 ## Installation
 
@@ -61,7 +64,7 @@ Opens the terminal.
     - `force_new` (optional): If `true`, forces the creation of a new session.
     - `session` (optional): Session options.
 
-### `require('floater').update(force_open?: boolean)`
+### `require('floaterm').update(force_open?: boolean)`
 
 Refreshes the terminal UI.
 
