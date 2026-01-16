@@ -5,12 +5,14 @@
 ---@field term_id floaterm.terminal.Id
 ---@field bufnr integer
 ---@field exit_code? integer
+---@field name? string
 ---@field opts floaterm.session.Opts
 local Session = {}
 Session.__index = Session
 
 ---@class floaterm.session.Opts
 ---@field cmd? string|string[]
+---@field name? string
 
 ---@param id floaterm.session.Id
 ---@param term_id floaterm.terminal.Id
@@ -23,6 +25,7 @@ function Session.new(id, term_id, opts)
 		id = id,
 		term_id = term_id,
 		bufnr = bufnr,
+		name = opts and opts.name,
 		opts = opts or {},
 	}, Session)
 
