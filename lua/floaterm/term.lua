@@ -87,6 +87,17 @@ function Terminal:_create_session(opts)
 	return session
 end
 
+---@private
+---@param name string
+---@return floaterm.Session?
+function Terminal:_find_session_by_name(name)
+	for _, session in pairs(self.sessions) do
+		if session.name == name then
+			return session
+		end
+	end
+end
+
 ---@class floaterm.terminal.OpenOpts
 ---@field force_new? boolean
 ---@field session? floaterm.session.Opts
@@ -94,6 +105,16 @@ end
 ---@param opts? floaterm.terminal.OpenOpts
 function Terminal:open(opts)
 	opts = opts or {}
+
+	-- Check for existing named session
+	if opts.session and opts.session.name then
+		local existing = self:_find_session_by_name(opts.session.name)
+		if existing and existing:is_valid() then
+			self:_set_current(existing.id)
+			self:update(true)
+			return
+		end
+	end
 
 	-- cleanup invalid session
 	if self.current_session and not self.current_session:is_valid() then
