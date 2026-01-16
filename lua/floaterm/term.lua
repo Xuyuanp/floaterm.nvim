@@ -254,7 +254,7 @@ end
 ---@param session_id floaterm.session.Id
 ---@param exit_code integer
 function Terminal:_on_session_error(session_id, exit_code)
-	exit_code = exit_code -- lint
+	local _ = exit_code -- lint
 
 	if not self.sessions[session_id] then
 		return

@@ -41,7 +41,8 @@ setmetatable(M, {
 			_G.Floaterm = require("floaterm.term").new(M.global or default)
 		end
 		return function(...)
-			return Floaterm[key](Floaterm, ...)
+			local term = _G.Floaterm
+			return term[key](term, ...)
 		end
 	end,
 })
