@@ -2,13 +2,16 @@
 ---@field private term_id floaterm.terminal.Id
 ---@field private winnr? integer
 ---@field private _hidden boolean
+---@field private default_win_opts table<string, any>
 local UI = {}
 UI.__index = UI
 
+---@param default_win_opts? table<string, any>
 ---@return floaterm.UI
-function UI.new()
+function UI.new(default_win_opts)
 	local self = setmetatable({
 		_hidden = true,
+		default_win_opts = default_win_opts or {},
 	}, UI)
 
 	return self
@@ -67,8 +70,27 @@ function UI:bufnr()
 	return self.winnr and vim.api.nvim_win_get_buf(self.winnr)
 end
 
+---@private
+---@param session_win_opts table<string, any>
+function UI:_apply_win_opts(session_win_opts)
+	if not self.winnr then
+		return
+	end
+
+	local merged = vim.tbl_deep_extend("force", self.default_win_opts, session_win_opts)
+	for opt, value in pairs(merged) do
+		pcall(function()
+			vim.wo[self.winnr][opt] = value
+		end)
+	end
+end
+
+---@class floaterm.ui.ShowOpts
+---@field config? floaterm.ui.WinConfig
+---@field session_win_opts? table<string, any>
+
 ---@param bufnr integer
----@param opts? floaterm.ui.WinConfig
+---@param opts? floaterm.ui.ShowOpts
 ---@param force? boolean
 function UI:show(bufnr, opts, force)
 	if self._hidden and not force then
@@ -77,16 +99,19 @@ function UI:show(bufnr, opts, force)
 
 	self._hidden = false
 
-	local config = self:get_config(opts or {})
+	opts = opts or {}
+	local config = self:get_config(opts.config or {})
 	if self:is_valid() then
 		if bufnr ~= self:bufnr() then
 			vim.api.nvim_win_set_buf(self.winnr, bufnr)
 		end
 		vim.api.nvim_win_set_config(self.winnr, config)
+		self:_apply_win_opts(opts.session_win_opts or {})
 		return
 	end
 
 	self.winnr = vim.api.nvim_open_win(bufnr, true, config)
+	self:_apply_win_opts(opts.session_win_opts or {})
 
 	vim.api.nvim_create_autocmd("WinClosed", {
 		pattern = "" .. self.winnr,
@@ -118,10 +143,10 @@ function UI:hide()
 end
 
 ---@type floaterm.UI
----@overload fun(): floaterm.UI
+---@overload fun(default_win_opts?: table<string, any>): floaterm.UI
 local cls = setmetatable(UI, {
-	__call = function(_)
-		return UI.new()
+	__call = function(_, ...)
+		return UI.new(...)
 	end,
 })
 return cls

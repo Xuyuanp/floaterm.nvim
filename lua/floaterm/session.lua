@@ -13,6 +13,7 @@ Session.__index = Session
 ---@class floaterm.session.Opts
 ---@field cmd? string|string[]
 ---@field name? string
+---@field win_opts? table<string, any>
 
 ---@param id floaterm.session.Id
 ---@param term_id floaterm.terminal.Id
@@ -131,6 +132,11 @@ end
 ---@return boolean
 function Session:is_valid()
 	return self.bufnr and vim.api.nvim_buf_is_valid(self.bufnr)
+end
+
+---@return table<string, any>
+function Session:get_win_opts()
+	return self.opts.win_opts or {}
 end
 
 ---@class floaterm.Session

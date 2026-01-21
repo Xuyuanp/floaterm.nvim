@@ -28,7 +28,7 @@ function Terminal.new(config)
 		id = id,
 		config = config,
 		sessions = {},
-		ui = UI(),
+		ui = UI(config.session.win_opts),
 		_next_session_id = 1,
 	}, Terminal)
 
@@ -133,10 +133,13 @@ end
 ---refresh ui
 ---@param force_open? boolean open if hidden
 function Terminal:update(force_open)
-	local opts = vim.tbl_deep_extend("force", self.config.ui.window, {
-		title = self:_format_sessions(),
-		title_pos = self.config.ui.title_pos,
-	})
+	local opts = {
+		config = vim.tbl_deep_extend("force", self.config.ui.window, {
+			title = self:_format_sessions(),
+			title_pos = self.config.ui.title_pos,
+		}),
+		session_win_opts = self.current_session:get_win_opts(),
+	}
 	self.ui:show(self.current_session.bufnr, opts, force_open)
 end
 
