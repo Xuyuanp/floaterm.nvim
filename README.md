@@ -25,7 +25,8 @@ Use your favorite plugin manager to install Floaterm.nvim. For example, with [la
     session = {
       -- string or string[]
       -- a session will be started with env NVIM_FLOATERM=1
-      cmd = vim.o.SHELL
+      cmd = vim.o.SHELL,
+      win_opts = {},         -- window options defaults (e.g., { winblend = 20 })
     },
     ui = {
       auto_hide_tabs = true, -- Automatically hide tabs when only one terminal is open
@@ -63,6 +64,19 @@ Opens the terminal.
   - `opts` (optional): Options for opening the terminal.
     - `force_new` (optional): If `true`, forces the creation of a new session.
     - `session` (optional): Session options.
+      - `name` (optional): Session name.
+      - `cmd` (optional): Command to execute.
+      - `win_opts` (optional): Window options to override default window options.
+
+```lua
+require('floaterm').open({
+  force_new = true,
+  session = {
+    name = "transparent",
+    win_opts = { winblend = 20 }
+  }
+})
+```
 
 ### `require('floaterm').update(force_open?: boolean)`
 

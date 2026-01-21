@@ -2,7 +2,9 @@ local M = {}
 
 ---@class floaterm.Config
 local default = {
-	session = {},
+	session = {
+		win_opts = {}, -- session scoped window options defaults (e.g., { winblend = 20 })
+	},
 	ui = {
 		auto_hide_tabs = true,
 		title_pos = "center", -- "center" | "left" | "right"
@@ -11,6 +13,7 @@ local default = {
 			inactive = "",
 			urgent = "󰐾",
 		},
+		-- window config
 		window = {
 			width = 0.8,
 			height = 0.8,
