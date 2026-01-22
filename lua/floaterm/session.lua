@@ -35,14 +35,8 @@ function Session.new(id, term_id, opts)
 	return self
 end
 
----@private
----@param fn fun()
-function Session:call(fn)
-	vim.api.nvim_buf_call(self.bufnr, fn)
-end
-
 function Session:prompt()
-	self:call(function()
+	vim.api.nvim_buf_call(self.bufnr, function()
 		self:_prompt()
 	end)
 end
@@ -137,6 +131,15 @@ end
 ---@return table<string, any>
 function Session:get_win_opts()
 	return self.opts.win_opts or {}
+end
+
+---@param text string
+function Session:send(text)
+	local job_id = vim.b[self.bufnr].floaterm_job_id
+	if not job_id then
+		return
+	end
+	vim.api.nvim_chan_send(job_id, text)
 end
 
 ---@class floaterm.Session

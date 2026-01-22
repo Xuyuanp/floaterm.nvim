@@ -1,5 +1,5 @@
 local new_set = MiniTest.new_set
-local expect, eq = MiniTest.expect, MiniTest.expect.equality
+local eq = MiniTest.expect.equality
 
 local T = new_set()
 
@@ -29,16 +29,18 @@ end
 -- UI:hidden() and UI:is_valid()
 -- =============================================================================
 
-T["state methods"] = new_set()
+T["hidden()"] = new_set()
 
-T["state methods"]["hidden() returns true initially"] = function()
+T["hidden()"]["returns true initially"] = function()
 	local UI = require("floaterm.ui")
 	local ui = UI()
 
 	eq(ui:hidden(), true)
 end
 
-T["state methods"]["is_valid() returns false when no window exists"] = function()
+T["is_valid()"] = new_set()
+
+T["is_valid()"]["returns false when no window exists"] = function()
 	local UI = require("floaterm.ui")
 	local ui = UI()
 
@@ -49,9 +51,9 @@ end
 -- UI:show() and UI:hide()
 -- =============================================================================
 
-T["show/hide"] = new_set()
+T["show()"] = new_set()
 
-T["show/hide"]["show() does not open window when hidden and force=false"] = function()
+T["show()"]["does not open window when hidden and force=false"] = function()
 	local UI = require("floaterm.ui")
 	local ui = UI()
 
@@ -64,7 +66,7 @@ T["show/hide"]["show() does not open window when hidden and force=false"] = func
 	vim.api.nvim_buf_delete(bufnr, { force = true })
 end
 
-T["show/hide"]["show() opens window when force=true"] = function()
+T["show()"]["opens window when force=true"] = function()
 	local UI = require("floaterm.ui")
 	local ui = UI()
 
@@ -78,7 +80,56 @@ T["show/hide"]["show() opens window when force=true"] = function()
 	vim.api.nvim_buf_delete(bufnr, { force = true })
 end
 
-T["show/hide"]["hide() sets hidden state and closes window"] = function()
+T["show()"]["applies default win_opts"] = function()
+	local UI = require("floaterm.ui")
+	local ui = UI({ winblend = 20 })
+	local bufnr = vim.api.nvim_create_buf(false, true)
+
+	ui:show(bufnr, {}, true)
+
+	eq(vim.wo[ui.winnr].winblend, 20)
+
+	ui:hide()
+	vim.api.nvim_buf_delete(bufnr, { force = true })
+end
+
+T["show()"]["applies session override"] = function()
+	local UI = require("floaterm.ui")
+	local ui = UI({ winblend = 20 })
+	local bufnr = vim.api.nvim_create_buf(false, true)
+
+	ui:show(bufnr, {
+		session_win_opts = { winblend = 50 },
+	}, true)
+
+	eq(vim.wo[ui.winnr].winblend, 50)
+
+	ui:hide()
+	vim.api.nvim_buf_delete(bufnr, { force = true })
+end
+
+T["show()"]["resets to default when no override"] = function()
+	local UI = require("floaterm.ui")
+	local ui = UI({ winblend = 10 })
+	local bufnr = vim.api.nvim_create_buf(false, true)
+
+	ui:show(bufnr, {
+		session_win_opts = { winblend = 50 },
+	}, true)
+	eq(vim.wo[ui.winnr].winblend, 50)
+
+	ui:show(bufnr, {
+		session_win_opts = {},
+	}, true)
+	eq(vim.wo[ui.winnr].winblend, 10)
+
+	ui:hide()
+	vim.api.nvim_buf_delete(bufnr, { force = true })
+end
+
+T["hide()"] = new_set()
+
+T["hide()"]["sets hidden state and closes window"] = function()
 	local UI = require("floaterm.ui")
 	local ui = UI()
 
@@ -95,11 +146,10 @@ T["show/hide"]["hide() sets hidden state and closes window"] = function()
 	vim.api.nvim_buf_delete(bufnr, { force = true })
 end
 
-T["show/hide"]["hide() is idempotent"] = function()
+T["hide()"]["is idempotent"] = function()
 	local UI = require("floaterm.ui")
 	local ui = UI()
 
-	-- hide() when already hidden should not error
 	ui:hide()
 	ui:hide()
 
