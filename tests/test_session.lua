@@ -1,7 +1,8 @@
-local new_set = MiniTest.new_set
 local eq = MiniTest.expect.equality
 
-local T = new_set()
+local T = MiniTest.new_set()
+
+local _, new_set = _G.test_helper()
 
 -- =============================================================================
 -- Session.new()
@@ -17,9 +18,6 @@ T["Session.new()"]["creates session with correct fields"] = function()
 	eq(session.term_id, 100)
 	eq(type(session.bufnr), "number")
 	eq(vim.api.nvim_buf_is_valid(session.bufnr), true)
-
-	-- Cleanup
-	vim.api.nvim_buf_delete(session.bufnr, { force = true })
 end
 
 T["Session.new()"]["creates session via call syntax"] = function()
@@ -28,9 +26,6 @@ T["Session.new()"]["creates session via call syntax"] = function()
 
 	eq(session.id, 2)
 	eq(session.term_id, 101)
-
-	-- Cleanup
-	vim.api.nvim_buf_delete(session.bufnr, { force = true })
 end
 
 T["Session.new()"]["stores name from options"] = function()
@@ -38,9 +33,6 @@ T["Session.new()"]["stores name from options"] = function()
 	local session = Session(3, 102, { name = "test-session" })
 
 	eq(session.name, "test-session")
-
-	-- Cleanup
-	vim.api.nvim_buf_delete(session.bufnr, { force = true })
 end
 
 T["Session.new()"]["stores options"] = function()
@@ -51,9 +43,6 @@ T["Session.new()"]["stores options"] = function()
 	eq(session.opts.cmd[1], "echo")
 	eq(session.opts.cmd[2], "hello")
 	eq(session.opts.name, "echo-test")
-
-	-- Cleanup
-	vim.api.nvim_buf_delete(session.bufnr, { force = true })
 end
 
 -- =============================================================================
@@ -67,9 +56,6 @@ T["is_valid()"]["returns true for valid buffer"] = function()
 	local session = Session(5, 104, {})
 
 	eq(session:is_valid(), true)
-
-	-- Cleanup
-	vim.api.nvim_buf_delete(session.bufnr, { force = true })
 end
 
 T["is_valid()"]["returns false after buffer is deleted"] = function()
@@ -93,9 +79,6 @@ T["send()"]["does nothing when job not initialized"] = function()
 
 	-- Should not error even without job
 	session:send("test")
-
-	-- Cleanup
-	vim.api.nvim_buf_delete(session.bufnr, { force = true })
 end
 
 -- =============================================================================
@@ -111,8 +94,6 @@ T["get_win_opts()"]["returns empty table by default"] = function()
 	local opts = session:get_win_opts()
 	eq(type(opts), "table")
 	eq(vim.tbl_count(opts), 0)
-
-	vim.api.nvim_buf_delete(session.bufnr, { force = true })
 end
 
 T["get_win_opts()"]["returns stored win_opts"] = function()
@@ -124,8 +105,6 @@ T["get_win_opts()"]["returns stored win_opts"] = function()
 	local opts = session:get_win_opts()
 	eq(opts.winblend, 10)
 	eq(opts.winhighlight, "Normal:MyHi")
-
-	vim.api.nvim_buf_delete(session.bufnr, { force = true })
 end
 
 return T

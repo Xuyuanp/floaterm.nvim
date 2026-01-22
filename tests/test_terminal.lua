@@ -1,7 +1,8 @@
-local new_set = MiniTest.new_set
 local eq, neq = MiniTest.expect.equality, MiniTest.expect.no_equality
 
-local T = new_set()
+local T = MiniTest.new_set()
+
+local _, new_set = _G.test_helper()
 
 -- Helper to create a minimal config
 local function make_config()
@@ -24,17 +25,6 @@ local function make_config()
 	}
 end
 
--- Helper to cleanup terminal and its sessions
-local function cleanup_term(term)
-	term:hide()
-	for _, sid in ipairs(term:list_sessions_ids()) do
-		local session = term.sessions[sid]
-		if session and session:is_valid() then
-			vim.api.nvim_buf_delete(session.bufnr, { force = true })
-		end
-	end
-end
-
 -- =============================================================================
 -- Terminal.new()
 -- =============================================================================
@@ -52,10 +42,6 @@ T["Terminal.new()"]["creates terminal with unique id"] = function()
 	eq(type(term1.id), "number")
 	eq(type(term2.id), "number")
 	neq(term1.id, term2.id)
-
-	-- Cleanup
-	term1:hide()
-	term2:hide()
 end
 
 T["Terminal.new()"]["creates terminal via call syntax"] = function()
@@ -63,9 +49,6 @@ T["Terminal.new()"]["creates terminal via call syntax"] = function()
 	local term = Terminal(make_config())
 
 	eq(type(term.id), "number")
-
-	-- Cleanup
-	term:hide()
 end
 
 T["Terminal.new()"]["initializes with empty sessions"] = function()
@@ -74,9 +57,6 @@ T["Terminal.new()"]["initializes with empty sessions"] = function()
 
 	local session_ids = term:list_sessions_ids()
 	eq(#session_ids, 0)
-
-	-- Cleanup
-	term:hide()
 end
 
 -- =============================================================================
@@ -92,9 +72,6 @@ T["list_sessions_ids()"]["returns empty table initially"] = function()
 	local ids = term:list_sessions_ids()
 	eq(type(ids), "table")
 	eq(#ids, 0)
-
-	-- Cleanup
-	term:hide()
 end
 
 -- =============================================================================
@@ -108,9 +85,6 @@ T["current_session_id()"]["returns nil when no session exists"] = function()
 	local term = Terminal(make_config())
 
 	eq(term:current_session_id(), nil)
-
-	-- Cleanup
-	term:hide()
 end
 
 -- =============================================================================
@@ -124,9 +98,6 @@ T["hidden()"]["returns true initially"] = function()
 	local term = Terminal(make_config())
 
 	eq(term:hidden(), true)
-
-	-- Cleanup
-	term:hide()
 end
 
 -- =============================================================================
@@ -144,8 +115,6 @@ T["toggle()"]["opens terminal when hidden"] = function()
 	term:toggle()
 
 	eq(term:hidden(), false)
-
-	cleanup_term(term)
 end
 
 T["toggle()"]["hides terminal when visible"] = function()
@@ -157,8 +126,6 @@ T["toggle()"]["hides terminal when visible"] = function()
 
 	term:toggle()
 	eq(term:hidden(), true)
-
-	cleanup_term(term)
 end
 
 -- =============================================================================
@@ -178,8 +145,6 @@ T["_format_sessions()"]["returns empty string with single session and auto_hide_
 
 	local formatted = term:_format_sessions()
 	eq(formatted, "")
-
-	cleanup_term(term)
 end
 
 T["_format_sessions()"]["returns icons with auto_hide_tabs disabled"] = function()
@@ -194,8 +159,6 @@ T["_format_sessions()"]["returns icons with auto_hide_tabs disabled"] = function
 	local formatted = term:_format_sessions()
 	eq(type(formatted), "table")
 	eq(#formatted > 0, true)
-
-	cleanup_term(term)
 end
 
 -- =============================================================================
@@ -214,8 +177,6 @@ T["open()"]["creates new session"] = function()
 
 	eq(#term:list_sessions_ids(), 1)
 	neq(term:current_session_id(), nil)
-
-	cleanup_term(term)
 end
 
 T["open()"]["reuses existing session by default"] = function()
@@ -231,8 +192,6 @@ T["open()"]["reuses existing session by default"] = function()
 
 	eq(first_id, second_id)
 	eq(#term:list_sessions_ids(), 1)
-
-	cleanup_term(term)
 end
 
 T["open()"]["creates new session when force_new is true"] = function()
@@ -247,8 +206,6 @@ T["open()"]["creates new session when force_new is true"] = function()
 
 	neq(first_id, second_id)
 	eq(#term:list_sessions_ids(), 2)
-
-	cleanup_term(term)
 end
 
 T["open()"]["reuses named session if exists"] = function()
@@ -268,8 +225,6 @@ T["open()"]["reuses named session if exists"] = function()
 	eq(first_id, third_id)
 	neq(first_id, second_id)
 	eq(#term:list_sessions_ids(), 2)
-
-	cleanup_term(term)
 end
 
 -- =============================================================================
@@ -300,8 +255,6 @@ T["_neighbor_session()"]["finds next session"] = function()
 	-- From id3, next should be nil (no cycle)
 	local next_from_3 = term:_next_session(id3, false)
 	eq(next_from_3, nil)
-
-	cleanup_term(term)
 end
 
 T["_neighbor_session()"]["finds prev session"] = function()
@@ -326,8 +279,6 @@ T["_neighbor_session()"]["finds prev session"] = function()
 	-- From id1, prev should be nil (no cycle)
 	local prev_from_1 = term:_prev_session(id1, false)
 	eq(prev_from_1, nil)
-
-	cleanup_term(term)
 end
 
 T["_neighbor_session()"]["cycles when cycle=true"] = function()
@@ -346,8 +297,6 @@ T["_neighbor_session()"]["cycles when cycle=true"] = function()
 	-- From id1, prev with cycle should be id2
 	local prev_from_1 = term:_prev_session(id1, true)
 	eq(prev_from_1, id2)
-
-	cleanup_term(term)
 end
 
 -- =============================================================================
@@ -373,8 +322,6 @@ T["send()"]["notifies when no current session"] = function()
 
 	vim.notify = original_notify
 	eq(notified, true)
-
-	term:hide()
 end
 
 T["send()"]["notifies when session id not found"] = function()
@@ -394,8 +341,6 @@ T["send()"]["notifies when session id not found"] = function()
 
 	vim.notify = original_notify
 	eq(notified, true)
-
-	term:hide()
 end
 
 T["send()"]["notifies when session name not found"] = function()
@@ -415,8 +360,6 @@ T["send()"]["notifies when session name not found"] = function()
 
 	vim.notify = original_notify
 	eq(notified, true)
-
-	term:hide()
 end
 
 T["send()"]["finds session by id"] = function()
@@ -432,8 +375,6 @@ T["send()"]["finds session by id"] = function()
 	-- Current is id2, send to id1 should switch
 	term:send("test", { id = id1, focus = true })
 	eq(term:current_session_id(), id1)
-
-	cleanup_term(term)
 end
 
 T["send()"]["finds session by name"] = function()
@@ -449,8 +390,6 @@ T["send()"]["finds session by name"] = function()
 	-- Current is id2, send to named-session should switch to id1
 	term:send("test", { name = "named-session", focus = true })
 	eq(term:current_session_id(), id1)
-
-	cleanup_term(term)
 end
 
 T["send()"]["id takes priority over name"] = function()
@@ -466,8 +405,6 @@ T["send()"]["id takes priority over name"] = function()
 	-- Send with both id and name - id should win
 	term:send("test", { id = id1, name = "session-b", focus = true })
 	eq(term:current_session_id(), id1)
-
-	cleanup_term(term)
 end
 
 T["send()"]["auto-opens when hidden"] = function()
@@ -480,8 +417,6 @@ T["send()"]["auto-opens when hidden"] = function()
 
 	term:send("test", { focus = true })
 	eq(term:hidden(), false)
-
-	cleanup_term(term)
 end
 
 T["send()"]["sends to current session when no opts"] = function()
@@ -494,8 +429,6 @@ T["send()"]["sends to current session when no opts"] = function()
 	-- Should not change current session
 	term:send("test")
 	eq(term:current_session_id(), current_id)
-
-	cleanup_term(term)
 end
 
 T["send()"]["does not switch session without focus"] = function()
@@ -515,8 +448,6 @@ T["send()"]["does not switch session without focus"] = function()
 	-- Send to id1 with focus=false - should NOT switch current session
 	term:send("test", { id = id1, focus = false })
 	eq(term:current_session_id(), id2)
-
-	cleanup_term(term)
 end
 
 T["send()"]["stays hidden without focus"] = function()
@@ -534,8 +465,6 @@ T["send()"]["stays hidden without focus"] = function()
 	-- Send with focus=false - should stay hidden
 	term:send("test", { focus = false })
 	eq(term:hidden(), true)
-
-	cleanup_term(term)
 end
 
 return T

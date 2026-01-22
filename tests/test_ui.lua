@@ -1,7 +1,8 @@
-local new_set = MiniTest.new_set
 local eq = MiniTest.expect.equality
 
-local T = new_set()
+local T = MiniTest.new_set()
+
+local _, new_set = _G.test_helper()
 
 -- =============================================================================
 -- UI.new()
@@ -62,8 +63,6 @@ T["show()"]["does not open window when hidden and force=false"] = function()
 
 	eq(ui:hidden(), true)
 	eq(ui:is_valid(), false)
-
-	vim.api.nvim_buf_delete(bufnr, { force = true })
 end
 
 T["show()"]["opens window when force=true"] = function()
@@ -75,9 +74,6 @@ T["show()"]["opens window when force=true"] = function()
 
 	eq(ui:hidden(), false)
 	eq(ui:is_valid(), true)
-
-	ui:hide()
-	vim.api.nvim_buf_delete(bufnr, { force = true })
 end
 
 T["show()"]["applies default win_opts"] = function()
@@ -88,9 +84,6 @@ T["show()"]["applies default win_opts"] = function()
 	ui:show(bufnr, {}, true)
 
 	eq(vim.wo[ui.winnr].winblend, 20)
-
-	ui:hide()
-	vim.api.nvim_buf_delete(bufnr, { force = true })
 end
 
 T["show()"]["applies session override"] = function()
@@ -103,9 +96,6 @@ T["show()"]["applies session override"] = function()
 	}, true)
 
 	eq(vim.wo[ui.winnr].winblend, 50)
-
-	ui:hide()
-	vim.api.nvim_buf_delete(bufnr, { force = true })
 end
 
 T["show()"]["resets to default when no override"] = function()
@@ -122,9 +112,6 @@ T["show()"]["resets to default when no override"] = function()
 		session_win_opts = {},
 	}, true)
 	eq(vim.wo[ui.winnr].winblend, 10)
-
-	ui:hide()
-	vim.api.nvim_buf_delete(bufnr, { force = true })
 end
 
 T["hide()"] = new_set()
@@ -142,8 +129,6 @@ T["hide()"]["sets hidden state and closes window"] = function()
 
 	eq(ui:hidden(), true)
 	eq(ui:is_valid(), false)
-
-	vim.api.nvim_buf_delete(bufnr, { force = true })
 end
 
 T["hide()"]["is idempotent"] = function()
