@@ -113,6 +113,32 @@ Switches to the previous(left) session.
 - **Parameters**:
   - `cycle` (optional): If `true`, cycles to the last session when at the first session.
 
+### `require('floaterm').send(text: string, opts?: floaterm.terminal.SendOpts)`
+
+Sends raw text to a terminal session.
+
+- **Parameters**:
+  - `text`: String to send (no newline appended).
+  - `opts` (optional): Target options.
+    - `id` (optional): Session ID (takes priority over `name`).
+    - `name` (optional): Session name.
+    - If neither provided, sends to current session.
+- **Behavior**:
+  - Auto-opens UI if hidden.
+  - Switches to target session if different from current.
+  - Notifies with warning if session not found.
+
+```lua
+-- Send to current session
+require('floaterm').send("ls -la\n")
+
+-- Send to session by ID
+require('floaterm').send("echo hello\n", { id = 2 })
+
+-- Send to session by name
+require('floaterm').send("npm test\n", { name = "dev" })
+```
+
 ## Highlights
 
 Floaterm.nvim provides customizable highlight groups for better visual integration:

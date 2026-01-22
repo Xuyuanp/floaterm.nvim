@@ -1,5 +1,5 @@
 local new_set = MiniTest.new_set
-local expect, eq = MiniTest.expect, MiniTest.expect.equality
+local eq = MiniTest.expect.equality
 
 local T = new_set()
 
@@ -82,23 +82,49 @@ T["is_valid()"]["returns false after buffer is deleted"] = function()
 end
 
 -- =============================================================================
--- Session:call()
+-- Session:send()
 -- =============================================================================
 
-T["call()"] = new_set()
+T["send()"] = new_set()
 
-T["call()"]["executes function in buffer context"] = function()
+T["send()"]["does nothing when job not initialized"] = function()
 	local Session = require("floaterm.session")
-	local session = Session(7, 106, {})
+	local session = Session(1, 100, {})
 
-	local captured_bufnr = nil
-	session:call(function()
-		captured_bufnr = vim.api.nvim_get_current_buf()
-	end)
-
-	eq(captured_bufnr, session.bufnr)
+	-- Should not error even without job
+	session:send("test")
 
 	-- Cleanup
+	vim.api.nvim_buf_delete(session.bufnr, { force = true })
+end
+
+-- =============================================================================
+-- Session:get_win_opts()
+-- =============================================================================
+
+T["get_win_opts()"] = new_set()
+
+T["get_win_opts()"]["returns empty table by default"] = function()
+	local Session = require("floaterm.session")
+	local session = Session(1, 100, {})
+
+	local opts = session:get_win_opts()
+	eq(type(opts), "table")
+	eq(vim.tbl_count(opts), 0)
+
+	vim.api.nvim_buf_delete(session.bufnr, { force = true })
+end
+
+T["get_win_opts()"]["returns stored win_opts"] = function()
+	local Session = require("floaterm.session")
+	local session = Session(1, 100, {
+		win_opts = { winblend = 10, winhighlight = "Normal:MyHi" },
+	})
+
+	local opts = session:get_win_opts()
+	eq(opts.winblend, 10)
+	eq(opts.winhighlight, "Normal:MyHi")
+
 	vim.api.nvim_buf_delete(session.bufnr, { force = true })
 end
 

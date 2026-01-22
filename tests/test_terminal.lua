@@ -1,5 +1,5 @@
 local new_set = MiniTest.new_set
-local expect, eq = MiniTest.expect, MiniTest.expect.equality
+local eq, neq = MiniTest.expect.equality, MiniTest.expect.no_equality
 
 local T = new_set()
 
@@ -51,7 +51,7 @@ T["Terminal.new()"]["creates terminal with unique id"] = function()
 
 	eq(type(term1.id), "number")
 	eq(type(term2.id), "number")
-	expect.no_equality(term1.id, term2.id)
+	neq(term1.id, term2.id)
 
 	-- Cleanup
 	term1:hide()
@@ -193,7 +193,7 @@ T["_format_sessions()"]["returns icons with auto_hide_tabs disabled"] = function
 
 	local formatted = term:_format_sessions()
 	eq(type(formatted), "table")
-	expect.equality(#formatted > 0, true)
+	eq(#formatted > 0, true)
 
 	cleanup_term(term)
 end
@@ -213,7 +213,7 @@ T["open()"]["creates new session"] = function()
 	term:open()
 
 	eq(#term:list_sessions_ids(), 1)
-	expect.no_equality(term:current_session_id(), nil)
+	neq(term:current_session_id(), nil)
 
 	cleanup_term(term)
 end
@@ -245,7 +245,7 @@ T["open()"]["creates new session when force_new is true"] = function()
 	term:open({ force_new = true })
 	local second_id = term:current_session_id()
 
-	expect.no_equality(first_id, second_id)
+	neq(first_id, second_id)
 	eq(#term:list_sessions_ids(), 2)
 
 	cleanup_term(term)
@@ -266,7 +266,7 @@ T["open()"]["reuses named session if exists"] = function()
 
 	-- third_id should be same as first_id (named session)
 	eq(first_id, third_id)
-	expect.no_equality(first_id, second_id)
+	neq(first_id, second_id)
 	eq(#term:list_sessions_ids(), 2)
 
 	cleanup_term(term)
@@ -346,6 +346,194 @@ T["_neighbor_session()"]["cycles when cycle=true"] = function()
 	-- From id1, prev with cycle should be id2
 	local prev_from_1 = term:_prev_session(id1, true)
 	eq(prev_from_1, id2)
+
+	cleanup_term(term)
+end
+
+-- =============================================================================
+-- Terminal:send()
+-- =============================================================================
+
+T["send()"] = new_set()
+
+T["send()"]["notifies when no current session"] = function()
+	local Terminal = require("floaterm.term")
+	local term = Terminal(make_config())
+
+	local notified = false
+	local original_notify = vim.notify
+	---@diagnostic disable-next-line: duplicate-set-field
+	vim.notify = function(msg, level)
+		if msg == "No current session" and level == vim.log.levels.WARN then
+			notified = true
+		end
+	end
+
+	term:send("test")
+
+	vim.notify = original_notify
+	eq(notified, true)
+
+	term:hide()
+end
+
+T["send()"]["notifies when session id not found"] = function()
+	local Terminal = require("floaterm.term")
+	local term = Terminal(make_config())
+
+	local notified = false
+	local original_notify = vim.notify
+	---@diagnostic disable-next-line: duplicate-set-field
+	vim.notify = function(msg, level)
+		if msg == "Session not found: id=999" and level == vim.log.levels.WARN then
+			notified = true
+		end
+	end
+
+	term:send("test", { id = 999 })
+
+	vim.notify = original_notify
+	eq(notified, true)
+
+	term:hide()
+end
+
+T["send()"]["notifies when session name not found"] = function()
+	local Terminal = require("floaterm.term")
+	local term = Terminal(make_config())
+
+	local notified = false
+	local original_notify = vim.notify
+	---@diagnostic disable-next-line: duplicate-set-field
+	vim.notify = function(msg, level)
+		if msg == "Session not found: name=nonexistent" and level == vim.log.levels.WARN then
+			notified = true
+		end
+	end
+
+	term:send("test", { name = "nonexistent" })
+
+	vim.notify = original_notify
+	eq(notified, true)
+
+	term:hide()
+end
+
+T["send()"]["finds session by id"] = function()
+	local Terminal = require("floaterm.term")
+	local term = Terminal(make_config())
+
+	term:open()
+	local id1 = term:current_session_id()
+	term:open({ force_new = true })
+	local id2 = term:current_session_id()
+	neq(id1, id2)
+
+	-- Current is id2, send to id1 should switch
+	term:send("test", { id = id1, focus = true })
+	eq(term:current_session_id(), id1)
+
+	cleanup_term(term)
+end
+
+T["send()"]["finds session by name"] = function()
+	local Terminal = require("floaterm.term")
+	local term = Terminal(make_config())
+
+	term:open({ session = { name = "named-session" } })
+	local id1 = term:current_session_id()
+	term:open({ force_new = true })
+	local id2 = term:current_session_id()
+	neq(id1, id2)
+
+	-- Current is id2, send to named-session should switch to id1
+	term:send("test", { name = "named-session", focus = true })
+	eq(term:current_session_id(), id1)
+
+	cleanup_term(term)
+end
+
+T["send()"]["id takes priority over name"] = function()
+	local Terminal = require("floaterm.term")
+	local term = Terminal(make_config())
+
+	term:open({ session = { name = "session-a" } })
+	local id1 = term:current_session_id()
+	term:open({ force_new = true, session = { name = "session-b" } })
+	local id2 = term:current_session_id()
+	neq(id1, id2)
+
+	-- Send with both id and name - id should win
+	term:send("test", { id = id1, name = "session-b", focus = true })
+	eq(term:current_session_id(), id1)
+
+	cleanup_term(term)
+end
+
+T["send()"]["auto-opens when hidden"] = function()
+	local Terminal = require("floaterm.term")
+	local term = Terminal(make_config())
+
+	term:open()
+	term:hide()
+	eq(term:hidden(), true)
+
+	term:send("test", { focus = true })
+	eq(term:hidden(), false)
+
+	cleanup_term(term)
+end
+
+T["send()"]["sends to current session when no opts"] = function()
+	local Terminal = require("floaterm.term")
+	local term = Terminal(make_config())
+
+	term:open()
+	local current_id = term:current_session_id()
+
+	-- Should not change current session
+	term:send("test")
+	eq(term:current_session_id(), current_id)
+
+	cleanup_term(term)
+end
+
+T["send()"]["does not switch session without focus"] = function()
+	local Terminal = require("floaterm.term")
+	local term = Terminal(make_config())
+
+	term:open()
+	local id1 = term:current_session_id()
+	term:open({ force_new = true })
+	local id2 = term:current_session_id()
+	neq(id1, id2)
+
+	-- Send to id1 without focus - should NOT switch current session
+	term:send("test", { id = id1 })
+	eq(term:current_session_id(), id2)
+
+	-- Send to id1 with focus=false - should NOT switch current session
+	term:send("test", { id = id1, focus = false })
+	eq(term:current_session_id(), id2)
+
+	cleanup_term(term)
+end
+
+T["send()"]["stays hidden without focus"] = function()
+	local Terminal = require("floaterm.term")
+	local term = Terminal(make_config())
+
+	term:open()
+	term:hide()
+	eq(term:hidden(), true)
+
+	-- Send without focus - should stay hidden
+	term:send("test")
+	eq(term:hidden(), true)
+
+	-- Send with focus=false - should stay hidden
+	term:send("test", { focus = false })
+	eq(term:hidden(), true)
 
 	cleanup_term(term)
 end

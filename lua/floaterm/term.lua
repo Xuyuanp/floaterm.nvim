@@ -98,6 +98,39 @@ function Terminal:_find_session_by_name(name)
 	end
 end
 
+---@class floaterm.terminal.FindSessionOpts
+---@field id? floaterm.session.Id
+---@field name? string
+
+---Find a session by id, name, or return current session
+---@param opts? floaterm.terminal.FindSessionOpts
+---@return floaterm.Session? session
+---@return string? error_message
+function Terminal:find_session(opts)
+	opts = opts or {}
+
+	if opts.id then
+		local session = self.sessions[opts.id]
+		if not session then
+			return nil, "Session not found: id=" .. opts.id
+		end
+		return session
+	end
+	if opts.name then
+		local session = self:_find_session_by_name(opts.name)
+		if not session then
+			return nil, "Session not found: name=" .. opts.name
+		end
+		return session
+	end
+
+	local session = self.current_session
+	if not session then
+		return nil, "No current session"
+	end
+	return session
+end
+
 ---@class floaterm.terminal.OpenOpts
 ---@field force_new? boolean
 ---@field session? floaterm.session.Opts
@@ -278,7 +311,7 @@ function Terminal:_on_session_closed(session_id)
 	self.sessions[session_id] = nil
 
 	-- other session closed, just remove it and update ui if needed
-	if not self.current_session or session_id ~= self.current_session.id then
+	if self.current_session and session_id ~= self.current_session.id then
 		self:update()
 		return
 	end
@@ -329,6 +362,31 @@ function Terminal:prev_session(cycle)
 	end
 
 	self:_set_current(sid)
+end
+
+---@class floaterm.terminal.SendOpts: floaterm.terminal.FindSessionOpts
+---@field focus? boolean
+
+---@param text string
+---@param opts? floaterm.terminal.SendOpts
+function Terminal:send(text, opts)
+	local session, err = self:find_session(opts)
+	if not session then
+		vim.notify(err, vim.log.levels.WARN)
+		return
+	end
+
+	if not session:is_valid() then
+		vim.notify("Session is invalid", vim.log.levels.WARN)
+		return
+	end
+
+	if opts and opts.focus then
+		self.current_session = session
+		self:update(true)
+	end
+
+	session:send(text)
 end
 
 ---@type floaterm.Terminal
