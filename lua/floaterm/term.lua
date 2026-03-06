@@ -56,7 +56,7 @@ function Terminal:_subscribe_events()
                 return
             end
             local session_id = args.data.id
-            local code = args.data.code
+            local code = args.data.exit_code
             self:_on_session_error(session_id, code)
         end,
     })
