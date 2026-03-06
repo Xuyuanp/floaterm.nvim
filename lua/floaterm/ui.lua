@@ -79,9 +79,7 @@ function UI:_apply_win_opts(session_win_opts)
 
     local merged = vim.tbl_deep_extend('force', self.default_win_opts, session_win_opts)
     for opt, value in pairs(merged) do
-        pcall(function()
-            vim.wo[self.winnr][opt] = value
-        end)
+        pcall(vim.api.nvim_set_option_value, opt, value, { win = self.winnr })
     end
 end
 
