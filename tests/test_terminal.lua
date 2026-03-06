@@ -351,6 +351,146 @@ T['_neighbor_session()']['cycles when cycle=true'] = function()
 end
 
 -- =============================================================================
+-- Terminal:next_session()
+-- =============================================================================
+
+T['next_session()'] = new_set()
+
+T['next_session()']['switches to next session'] = function()
+    local Terminal = require('floaterm.term')
+    local term = Terminal(make_config())
+
+    term:open()
+    local id1 = term:current_session_id()
+    term:open({ force_new = true })
+    local id2 = term:current_session_id()
+
+    -- Start at id1
+    term:_set_current(id1)
+    eq(term:current_session_id(), id1)
+
+    -- Move to next
+    term:next_session(false)
+    eq(term:current_session_id(), id2)
+
+    cleanup_term(term)
+end
+
+T['next_session()']['cycles to first session when cycle is true'] = function()
+    local Terminal = require('floaterm.term')
+    local term = Terminal(make_config())
+
+    term:open()
+    local id1 = term:current_session_id()
+    term:open({ force_new = true })
+    local id2 = term:current_session_id()
+
+    -- Start at id2
+    term:_set_current(id2)
+    eq(term:current_session_id(), id2)
+
+    -- Move to next with cycle
+    term:next_session(true)
+    eq(term:current_session_id(), id1)
+
+    cleanup_term(term)
+end
+
+T['next_session()']['does nothing if no sessions'] = function()
+    local Terminal = require('floaterm.term')
+    local term = Terminal(make_config())
+
+    eq(term:current_session_id(), nil)
+    term:next_session(true)
+    eq(term:current_session_id(), nil)
+
+    cleanup_term(term)
+end
+
+T['next_session()']['does nothing if only one session'] = function()
+    local Terminal = require('floaterm.term')
+    local term = Terminal(make_config())
+
+    term:open()
+    local id1 = term:current_session_id()
+
+    term:next_session(true)
+    eq(term:current_session_id(), id1)
+
+    cleanup_term(term)
+end
+
+-- =============================================================================
+-- Terminal:prev_session()
+-- =============================================================================
+
+T['prev_session()'] = new_set()
+
+T['prev_session()']['switches to previous session'] = function()
+    local Terminal = require('floaterm.term')
+    local term = Terminal(make_config())
+
+    term:open()
+    local id1 = term:current_session_id()
+    term:open({ force_new = true })
+    local id2 = term:current_session_id()
+
+    -- Start at id2
+    term:_set_current(id2)
+    eq(term:current_session_id(), id2)
+
+    -- Move to previous
+    term:prev_session(false)
+    eq(term:current_session_id(), id1)
+
+    cleanup_term(term)
+end
+
+T['prev_session()']['cycles to last session when cycle is true'] = function()
+    local Terminal = require('floaterm.term')
+    local term = Terminal(make_config())
+
+    term:open()
+    local id1 = term:current_session_id()
+    term:open({ force_new = true })
+    local id2 = term:current_session_id()
+
+    -- Start at id1
+    term:_set_current(id1)
+    eq(term:current_session_id(), id1)
+
+    -- Move to previous with cycle
+    term:prev_session(true)
+    eq(term:current_session_id(), id2)
+
+    cleanup_term(term)
+end
+
+T['prev_session()']['does nothing if no sessions'] = function()
+    local Terminal = require('floaterm.term')
+    local term = Terminal(make_config())
+
+    eq(term:current_session_id(), nil)
+    term:prev_session(true)
+    eq(term:current_session_id(), nil)
+
+    cleanup_term(term)
+end
+
+T['prev_session()']['does nothing if only one session'] = function()
+    local Terminal = require('floaterm.term')
+    local term = Terminal(make_config())
+
+    term:open()
+    local id1 = term:current_session_id()
+
+    term:prev_session(true)
+    eq(term:current_session_id(), id1)
+
+    cleanup_term(term)
+end
+
+-- =============================================================================
 -- Terminal:send()
 -- =============================================================================
 
