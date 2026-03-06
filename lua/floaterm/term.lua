@@ -56,8 +56,7 @@ function Terminal:_subscribe_events()
                 return
             end
             local session_id = args.data.id
-            local code = args.data.code
-            self:_on_session_error(session_id, code)
+            self:_on_session_error(session_id)
         end,
     })
     vim.api.nvim_create_autocmd('WinResized', {
@@ -288,10 +287,7 @@ end
 
 ---@private
 ---@param session_id floaterm.session.Id
----@param exit_code integer
-function Terminal:_on_session_error(session_id, exit_code)
-    local _ = exit_code -- lint
-
+function Terminal:_on_session_error(session_id)
     if not self.sessions[session_id] then
         return
     end
